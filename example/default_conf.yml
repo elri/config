@@ -1,0 +1,7 @@
+welcome: Hello and Welcome to 'Guess a Number'
+hints: false
+limits:
+  min: 0
+  max: 100
+answer: -1
+guess: 5

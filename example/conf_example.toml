@@ -1,0 +1,8 @@
+welcome = "Hello and Welcome to 'Guess a Number'"
+hints = false
+answer = -1.0
+guess = 5
+
+[limits]
+  min = 0.0
+  max = 100.0

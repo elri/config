@@ -1,0 +1,11 @@
+pim = "sweet candy"
+age = 25
+cats = ["Pella", "Hjördis"]
+pi = 3.14
+perfection = [6, 28, 496, 8128]
+dreams = true
+dob = 1987-07-05T05:45:00Z
+
+[piglet]
+  name = "Yim"
+  age = 10
