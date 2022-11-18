@@ -33,7 +33,7 @@ var (
 	_         = flag.Int("guess", 5, "number of guesses")
 )
 
-func example1() {
+func main() {
 	config.SetDefaultFile("default_conf.yml")
 	config.ParseFlags()
 
