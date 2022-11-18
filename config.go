@@ -263,3 +263,32 @@ func String(c interface{}) string {
 
 	return ret
 }
+
+//TODO dry
+func StringIgnoreZeroValues(c interface{}) string {
+	ret := ""
+	rv := reflect.ValueOf(c).Elem()
+	typ := rv.Type()
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		fieldVal := rv.Field(i)
+		switch fieldVal.Kind() {
+		case reflect.Struct:
+			ret += fmt.Sprintf("%s: \n", strings.ToLower(field.Name))
+			jTyp := fieldVal.Type()
+			for j := 0; j < fieldVal.NumField(); j++ {
+				jField := fieldVal.Field(j)
+				name := strings.ToLower(jTyp.Field(j).Name)
+				if !jField.IsZero() {
+					ret += fmt.Sprint("    ", name, ": ", jField, "\n")
+				}
+			}
+		default:
+			if !fieldVal.IsZero() {
+				ret += fmt.Sprint(strings.ToLower(field.Name), ": ", fieldVal, "\n")
+			}
+		}
+	}
+
+	return ret
+}
