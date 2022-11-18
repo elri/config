@@ -1,0 +1,29 @@
+welcome = "~ whiskey time! ~"
+
+[owner] 
+  name = "Elsa"
+
+type="whiskey"
+
+[[bottles]] 
+  name = "The Classic Laddie"
+  distillery = "Bruichladdich"
+  country = "Scotland"
+
+[[bottles]] 
+  name = "Miltonduff No 5"
+  age = 14
+  distillery = "Tjaerdalen"
+  country = "Sweden/Scotland"
+
+[[bottles]] 
+  name = "Komagatake (2021)"
+  distillery = "Mars Shinshu"
+  country = "Japan"
+
+[[bottles]] 
+  name = "Kilbeggan 3 yo"
+  age = 3
+  distillery = "Kilbeggan"
+  country = "Ireland"
+

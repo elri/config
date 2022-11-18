@@ -60,7 +60,7 @@ The config files may be of the following types:
 
 
 ## Currently not supported
-- Nestled structs for yaml files. Example:
+- Anonymous structs for yaml files. Example:
 ```
 type Inner struct {
 	hello string
@@ -72,6 +72,7 @@ type Outer struct {
 }
 
 ```
+This is due to how the standard yml packages (currently) parses structs.  
 
 - Setting more complex structures via flags. 
 
