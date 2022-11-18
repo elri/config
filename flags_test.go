@@ -432,10 +432,6 @@ func Test_DefaultFlagPrint(t *testing.T) {
 	err = ParseFlags()
 	assert.Nil(t, err)
 
-	// set default config file
-	err = SetDefaultFile("example/default_conf.yml")
-	assert.Nil(t, err)
-
 	// intercept exit func
 	oldOsExit := osExit
 	defer func() { osExit = oldOsExit }()

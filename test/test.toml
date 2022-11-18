@@ -4,7 +4,7 @@ Cats = [ "Pella", "Hjördis" ]
 Dreams = true
 Pi = 3.14
 Perfection = [ 6, 28, 496, 8128 ]
-DOB = 1987-07-05T05:45:00Z
+DOB = 1985-05-05T05:45:00Z
 
 [piglet]
 name = "Yim"

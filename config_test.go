@@ -254,17 +254,15 @@ func Test_ConfigFail(t *testing.T) {
 
 	conf := new(TestConfig)
 	err = SetUpConfigurationWithConfigFile(conf, "none.yml")
-	assert.NotNil(t, err)
-	assert.True(t, strings.Contains(err.Error(), ErrInvalidConfigFile.Error()))
 	assert.True(t, strings.Contains(err.Error(), ErrNoFileFound.Error()))
 
 	// #2: no default file, given config file wrong format
 	err = SetDefaultFile("")
 	assert.NotNil(t, err)
 
-	err = SetUpConfigurationWithConfigFile(conf, "test/test.json")
+	err = SetUpConfigurationWithConfigFile(conf, "test/test.fake")
 	assert.NotNil(t, err)
-	fmt.Println(err)
+
 	assert.True(t, strings.Contains(err.Error(), ErrInvalidConfigFile.Error()))
 	assert.True(t, strings.Contains(err.Error(), ErrNoDefaultConfig.Error()))
 
