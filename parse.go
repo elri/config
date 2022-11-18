@@ -3,7 +3,9 @@ package config
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -130,6 +132,11 @@ func decode(cfg interface{}, f *os.File, filename string) (err error) {
 	case strings.Contains(filename, "yml"):
 		decoder := yaml.NewDecoder(f)
 		err = decoder.Decode(cfg)
+	case strings.Contains(filename, "json"):
+		content, err := ioutil.ReadFile(filename)
+		if err == nil {
+			json.Unmarshal(content, cfg)
+		}
 	default:
 		err = errors.New(ErrInvalidConfigFile.Error() + "of type " + filename)
 	}
