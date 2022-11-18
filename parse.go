@@ -41,6 +41,7 @@ var (
 	ErrNoDefaultConfig            = errors.New("no default config file to parse")
 	ErrFailedToParseDefaultConfig = fmt.Errorf("failed to parse default config (%s)", defaultFile)
 	ErrInvalidConfigFile          = errors.New("unsupported or invalid file")
+	ErrInvalidFormat              = errors.New("invalid format of file")
 	ErrNoConfigFileToParse        = errors.New("no file given to parse")
 	ErrNoFileFound                = syscall.Errno(2) //errors.New("could not find file")
 )
@@ -135,12 +136,19 @@ func decode(cfg interface{}, f *os.File, filename string) (err error) {
 		decoder := yaml.NewDecoder(f)
 		err = decoder.Decode(cfg)
 	case strings.Contains(filename, "json"):
-		content, err := ioutil.ReadFile(filename)
+		var content []byte
+		content, err = ioutil.ReadFile(filename)
 		if err == nil {
-			json.Unmarshal(content, cfg)
+			err = json.Unmarshal(content, cfg)
+		} else {
+			return
 		}
 	default:
 		err = errors.New(ErrInvalidConfigFile.Error() + " of type " + filename)
+	}
+
+	if err != nil && !strings.Contains(err.Error(), ErrInvalidConfigFile.Error()) {
+		err = ErrInvalidFormat
 	}
 	return
 }

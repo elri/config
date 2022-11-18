@@ -22,6 +22,7 @@ var (
 )
 
 var osExit = os.Exit //to enable testing
+var ErrNotAPointer = errors.New("cfg should be pointer")
 
 func init() {
 	envs = make(map[string]interface{})
@@ -63,7 +64,7 @@ func SetUpConfigurationWithConfigFile(cfg interface{}, filename string, dirs ...
 func setup(cfg interface{}, filename string, dirs ...string) (err error) {
 	//Check that cfg is pointer
 	if reflect.ValueOf(cfg).Kind() != reflect.Ptr {
-		return fmt.Errorf("invalid argument: cfg should be pointer, but is %s", reflect.ValueOf(cfg).Kind())
+		return fmt.Errorf("invalid argument: "+ErrNotAPointer.Error()+"but is %s", reflect.ValueOf(cfg).Kind())
 	}
 
 	// DEFAULT CONFIG FILE

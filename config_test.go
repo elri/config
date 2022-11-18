@@ -247,31 +247,53 @@ func Test_ConfigAll(t *testing.T) {
 
 func Test_ConfigFail(t *testing.T) {
 	var err error
+	var cfg interface{}
 
-	// #1: default file wrong format, nonexistant given config
-	err = SetDefaultFile("test/test.json")
-	assert.Nil(t, err)
+	tests := []struct {
+		name           string
+		cfg            interface{}
+		defaultFile    string
+		configFile     string
+		expectedErrors []error
+	}{
+		{
+			name:           "nonexistant given config",
+			configFile:     "none.yml",
+			expectedErrors: []error{ErrNoFileFound},
+		},
+		{
+			name:           "no default file, given config file doesn't exist and is of unvalid type",
+			configFile:     "test.fake",
+			expectedErrors: []error{ErrNoDefaultConfig, ErrInvalidConfigFile, ErrNoFileFound},
+		},
+		{
+			name:           "cfg is not a pointer",
+			cfg:            TestConfig{},
+			expectedErrors: []error{ErrNotAPointer},
+		},
+		{
+			name:           "type errors in file",
+			configFile:     "test/faulty.yml",
+			expectedErrors: []error{ErrInvalidFormat},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			SetDefaultFile(tt.defaultFile)
 
-	conf := new(TestConfig)
-	err = SetUpConfigurationWithConfigFile(conf, "none.yml")
-	assert.True(t, strings.Contains(err.Error(), ErrNoFileFound.Error()))
+			if tt.cfg == nil {
+				cfg = new(TestConfig)
+			} else {
+				cfg = tt.cfg
+			}
+			err = SetUpConfigurationWithConfigFile(cfg, tt.configFile)
+			assert.NotNil(t, err)
+			for _, expectedErr := range tt.expectedErrors {
+				assert.True(t, strings.Contains(err.Error(), expectedErr.Error()))
+			}
+		})
+	}
 
-	// #2: no default file, given config file wrong format
-	err = SetDefaultFile("")
-	assert.NotNil(t, err)
-
-	err = SetUpConfigurationWithConfigFile(conf, "test/test.fake")
-	assert.NotNil(t, err)
-
-	assert.True(t, strings.Contains(err.Error(), ErrInvalidConfigFile.Error()))
-	assert.True(t, strings.Contains(err.Error(), ErrNoDefaultConfig.Error()))
-
-	// #3: cfg is not a pointer
-	err = SetUpConfiguration(*conf)
-	assert.NotNil(t, err)
-
-	err = SetUpConfigurationWithConfigFile(*conf, "thisisneverused")
-	assert.NotNil(t, err)
 }
 
 func Test_setField(t *testing.T) {
