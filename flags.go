@@ -219,9 +219,9 @@ func afterParse() func(*flag.Flag) {
 			panic(errors.New("flagSet not parsed")) //TODO
 		}
 		if ParsedFlag(f) {
-			if f.Name == printConfFlagName {
+			if f.Name == printConfFlagName && f.Value.String() == "true" {
 				printconf = true
-			} else if f.Name == writeConfFlagName {
+			} else if f.Name == writeConfFlagName && f.Value.String() == "true" {
 				writedefconf = true
 			} else {
 				addFlagValueToMap(flags, f, f.Value.String())
