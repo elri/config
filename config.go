@@ -22,6 +22,7 @@ var (
 )
 
 var osExit = os.Exit //to enable testing
+var ErrNotAPointer = errors.New("cfg should be pointer")
 
 func init() {
 	envs = make(map[string]interface{})
@@ -63,7 +64,7 @@ func SetUpConfigurationWithConfigFile(cfg interface{}, filename string, dirs ...
 func setup(cfg interface{}, filename string, dirs ...string) (err error) {
 	//Check that cfg is pointer
 	if reflect.ValueOf(cfg).Kind() != reflect.Ptr {
-		return fmt.Errorf("invalid argument: cfg should be pointer, but is %s", reflect.ValueOf(cfg).Kind())
+		return fmt.Errorf("invalid argument: "+ErrNotAPointer.Error()+"but is %s", reflect.ValueOf(cfg).Kind())
 	}
 
 	// DEFAULT CONFIG FILE
@@ -241,6 +242,20 @@ func setFieldString(toInsert interface{}, fieldVal reflect.Value, defaultMsg str
 // name: Mio
 // age: 9
 func String(c interface{}) string {
+	return createString(c, true)
+}
+
+// Same as String, except ignores zero values e.g. empty strings and zeroes
+func StringIgnoreZeroValues(c interface{}) string {
+	return createString(c, false)
+}
+
+func createString(c interface{}, printZeroValues bool) string {
+
+	doPrint := func(field reflect.Value) bool {
+		return !field.IsZero() || field.Kind() == reflect.Bool || printZeroValues
+	}
+
 	ret := ""
 	rv := reflect.ValueOf(c).Elem()
 	typ := rv.Type()
@@ -254,10 +269,14 @@ func String(c interface{}) string {
 			for j := 0; j < fieldVal.NumField(); j++ {
 				jField := fieldVal.Field(j)
 				name := strings.ToLower(jTyp.Field(j).Name)
-				ret += fmt.Sprint("    ", name, ": ", jField, "\n")
+				if doPrint(jField) {
+					ret += fmt.Sprint("    ", name, ": ", jField, "\n")
+				}
 			}
 		default:
-			ret += fmt.Sprint(strings.ToLower(field.Name), ": ", fieldVal, "\n")
+			if doPrint(fieldVal) {
+				ret += fmt.Sprint(strings.ToLower(field.Name), ": ", fieldVal, "\n")
+			}
 		}
 	}
 

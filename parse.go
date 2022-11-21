@@ -3,11 +3,14 @@ package config
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
+	"syscall"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pkg/errors"
@@ -37,9 +40,10 @@ func GetDefaultFile() string {
 var (
 	ErrNoDefaultConfig            = errors.New("no default config file to parse")
 	ErrFailedToParseDefaultConfig = fmt.Errorf("failed to parse default config (%s)", defaultFile)
-	ErrInvalidConfigFile          = errors.New("cannot handle file")
+	ErrInvalidConfigFile          = errors.New("unsupported or invalid file")
+	ErrInvalidFormat              = errors.New("invalid format of file")
 	ErrNoConfigFileToParse        = errors.New("no file given to parse")
-	ErrNoFileFound                = errors.New("could not find file")
+	ErrNoFileFound                = syscall.Errno(2) //errors.New("could not find file")
 )
 
 func addErr(prev error, add error) error {
@@ -120,6 +124,7 @@ func ParseConfigFile(cfg interface{}, filename string, dirs ...string) (err erro
 	if derr != nil {
 		err = addErr(err, derr)
 	}
+
 	return
 }
 
@@ -130,8 +135,20 @@ func decode(cfg interface{}, f *os.File, filename string) (err error) {
 	case strings.Contains(filename, "yml"):
 		decoder := yaml.NewDecoder(f)
 		err = decoder.Decode(cfg)
+	case strings.Contains(filename, "json"):
+		var content []byte
+		content, err = ioutil.ReadFile(filename)
+		if err == nil {
+			err = json.Unmarshal(content, cfg)
+		} else {
+			return
+		}
 	default:
-		err = errors.New(ErrInvalidConfigFile.Error() + "of type " + filename)
+		err = errors.New(ErrInvalidConfigFile.Error() + " of type " + filename)
+	}
+
+	if err != nil && !strings.Contains(err.Error(), ErrInvalidConfigFile.Error()) {
+		err = ErrInvalidFormat
 	}
 	return
 }
@@ -203,23 +220,33 @@ func writeToDefaultFile(cfg interface{}) (err error) {
 
 func encode(cfg interface{}, filename string) (buf *bytes.Buffer, err error) {
 	buf = new(bytes.Buffer)
+	var bytes []byte
 
 	switch {
 	case strings.Contains(filename, "toml"):
 		encoder := toml.NewEncoder(buf)
 		err = encoder.Encode(cfg)
+		if err == nil {
+			bytes = buf.Bytes()
+		}
 	case strings.Contains(filename, "yml"):
 		encoder := yaml.NewEncoder(buf)
 		err = encoder.Encode(cfg)
+		if err == nil {
+			bytes = buf.Bytes()
+		}
+	case strings.Contains(filename, "json"):
+		bytes, err = json.Marshal(cfg)
 	default:
-		err = errors.New("can't handle " + filename)
+		err = ErrInvalidConfigFile
+		//err = errors.New("can't handle " + filename)
 	}
 
 	if err == nil {
 		var f *os.File
 		f, err = os.OpenFile(filename, os.O_WRONLY, 0644)
 		if err == nil {
-			f.Write(buf.Bytes())
+			f.Write(bytes)
 		}
 		defer f.Close()
 	}

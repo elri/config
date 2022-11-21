@@ -1,0 +1,13 @@
+{ 
+    "pim": "salmiak",
+    "age": 2,
+    "cats": [ "Lucifer", "Felix" ],
+    "dreams": true,
+    "pi": 3.14159,
+    "perfection": [ 1, 1, 2, 3, 5],
+    "dob": "1981-01-01T01:41:00Z",
+    "piglet": {
+        "name": "Noef",
+        "age": 5
+        }
+}

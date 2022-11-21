@@ -33,9 +33,6 @@ var (
 	_         = flag.Int("guess", 5, "number of guesses")
 )
 
-//print out defaults to file
-//correct needs a default made from min & max
-
 func main() {
 	config.SetDefaultFile("default_conf.yml")
 	config.ParseFlags()

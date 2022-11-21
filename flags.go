@@ -117,26 +117,33 @@ func (fv *FlagValue) String() string {
 }
 
 func IsString(f *flag.Flag) bool {
+	ensureFlagValue(f)
 	fv := GetFlagValue(f)
 	val := reflect.Indirect(reflect.ValueOf(fv.Value))
 	return val.Kind() == reflect.String
 }
 
 func GetFlagValue(f *flag.Flag) *FlagValue {
-	fv, ok := f.Value.(*FlagValue)
-	if ok {
-		return fv
-	}
-	fvb, ok := f.Value.(*FlagValueBool)
-	if ok {
-		fv := &FlagValue{Value: fvb.Value, parsed: fvb.parsed}
-		return fv
+	if f.Value != nil {
+		fv, ok := f.Value.(*FlagValue)
+		if ok {
+			return fv
+		}
+		fvb, ok := f.Value.(*FlagValueBool)
+		if ok {
+			fv := &FlagValue{Value: fvb.Value, parsed: fvb.parsed}
+			return fv
+		}
 	}
 	return nil
 
 }
 
 func ensureFlagValue(f *flag.Flag) (changed bool) {
+	if f.Value == nil {
+		// TODO - ContinueOnError default behaviour
+		return
+	}
 	val := reflect.Indirect(reflect.ValueOf(f.Value))
 	typ := reflect.TypeOf(FlagValue{})
 	typ2 := reflect.TypeOf(FlagValueBool{})
@@ -219,9 +226,9 @@ func afterParse() func(*flag.Flag) {
 			panic(errors.New("flagSet not parsed")) //TODO
 		}
 		if ParsedFlag(f) {
-			if f.Name == printConfFlagName {
+			if f.Name == printConfFlagName && f.Value.String() == "true" {
 				printconf = true
-			} else if f.Name == writeConfFlagName {
+			} else if f.Name == writeConfFlagName && f.Value.String() == "true" {
 				writedefconf = true
 			} else {
 				addFlagValueToMap(flags, f, f.Value.String())
