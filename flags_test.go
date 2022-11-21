@@ -61,7 +61,7 @@ func Test_SetFlagDefault(t *testing.T) {
 
 	err = SetFlagDefault(str, "hello")
 	assert.NotNil(t, err)
-	assert.True(t, strings.Contains(err.Error(), "not FlagValue type:"))
+	assert.Contains(t, err.Error(), "not FlagValue type:")
 
 }
 

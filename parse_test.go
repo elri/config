@@ -2,7 +2,6 @@ package config
 
 import (
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -144,7 +143,7 @@ func Test_ParseDefaultConfigFile(t *testing.T) {
 			if tt.expectedErr != nil {
 				assert.NotNil(t, err)
 				if err != nil {
-					assert.True(t, strings.Contains(err.Error(), tt.expectedErr.Error()))
+					assert.Contains(t, err.Error(), tt.expectedErr.Error())
 				}
 			} else {
 				assert.Nil(t, err)
@@ -225,7 +224,7 @@ func Test_ParseConfigFile(t *testing.T) {
 			err = ParseConfigFile(cfg, tt.configFile, "test")
 			if tt.expectedErr != nil {
 				assert.NotNil(t, err)
-				assert.True(t, strings.Contains(err.Error(), tt.expectedErr.Error()))
+				assert.Contains(t, err.Error(), tt.expectedErr.Error())
 			}
 			if tt.expectedConfig != nil {
 				assert.Equal(t, *tt.expectedConfig, *cfg)
@@ -329,7 +328,7 @@ func Test_encode(t *testing.T) {
 				assert.Equal(t, ErrNoDefaultConfig, err)
 			} else {
 				assert.NotNil(t, err)
-				assert.True(t, strings.Contains(err.Error(), tt.expectedError.Error()))
+				assert.Contains(t, err.Error(), tt.expectedError.Error())
 			}
 
 			if tt.cfg != nil {
@@ -356,6 +355,11 @@ func Test_writeToDefaultFile(t *testing.T) {
 	os.Stdout = w
 	origStdin := os.Stdin
 	os.Stdin = r
+	defer func() {
+		// Restore
+		os.Stdout = origStdout
+		os.Stdin = origStdin
+	}()
 
 	// Set default file
 	var f *os.File
@@ -443,7 +447,7 @@ func Test_writeToDefaultFile(t *testing.T) {
 				//fp := fmt.Sprintf("output=\n%d %s\n--\nexpected: %d %s", len(string(output)), string(output), len(tt.expectedOutput), tt.expectedOutput)
 				//origStdout.WriteString(fp)
 
-				assert.True(t, strings.Contains(string(output), tt.expectedOutput))
+				assert.Contains(t, string(output), tt.expectedOutput)
 			} else {
 				//empty buffer
 				buf := make([]byte, 1024)
@@ -457,8 +461,4 @@ func Test_writeToDefaultFile(t *testing.T) {
 			}
 		})
 	}
-
-	// Restore
-	os.Stdout = origStdout
-	os.Stdin = origStdin
 }

@@ -5,7 +5,6 @@ import (
 	"os"
 	"reflect"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -289,7 +288,7 @@ func Test_ConfigFail(t *testing.T) {
 			err = SetUpConfigurationWithConfigFile(cfg, tt.configFile)
 			assert.NotNil(t, err)
 			for _, expectedErr := range tt.expectedErrors {
-				assert.True(t, strings.Contains(err.Error(), expectedErr.Error()))
+				assert.Contains(t, err.Error(), expectedErr.Error())
 			}
 		})
 	}
