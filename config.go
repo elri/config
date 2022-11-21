@@ -242,31 +242,20 @@ func setFieldString(toInsert interface{}, fieldVal reflect.Value, defaultMsg str
 // name: Mio
 // age: 9
 func String(c interface{}) string {
-	ret := ""
-	rv := reflect.ValueOf(c).Elem()
-	typ := rv.Type()
-	for i := 0; i < typ.NumField(); i++ {
-		field := typ.Field(i)
-		fieldVal := rv.Field(i)
-		switch fieldVal.Kind() {
-		case reflect.Struct:
-			ret += fmt.Sprintf("%s: \n", strings.ToLower(field.Name))
-			jTyp := fieldVal.Type()
-			for j := 0; j < fieldVal.NumField(); j++ {
-				jField := fieldVal.Field(j)
-				name := strings.ToLower(jTyp.Field(j).Name)
-				ret += fmt.Sprint("    ", name, ": ", jField, "\n")
-			}
-		default:
-			ret += fmt.Sprint(strings.ToLower(field.Name), ": ", fieldVal, "\n")
-		}
-	}
-
-	return ret
+	return createString(c, true)
 }
 
-//TODO dry
+// Same as String, except ignores zero values e.g. empty strings and zeroes
 func StringIgnoreZeroValues(c interface{}) string {
+	return createString(c, false)
+}
+
+func createString(c interface{}, printZeroValues bool) string {
+
+	doPrint := func(field reflect.Value) bool {
+		return !field.IsZero() || field.Kind() == reflect.Bool || printZeroValues
+	}
+
 	ret := ""
 	rv := reflect.ValueOf(c).Elem()
 	typ := rv.Type()
@@ -280,12 +269,12 @@ func StringIgnoreZeroValues(c interface{}) string {
 			for j := 0; j < fieldVal.NumField(); j++ {
 				jField := fieldVal.Field(j)
 				name := strings.ToLower(jTyp.Field(j).Name)
-				if !jField.IsZero() {
+				if doPrint(jField) {
 					ret += fmt.Sprint("    ", name, ": ", jField, "\n")
 				}
 			}
 		default:
-			if !fieldVal.IsZero() {
+			if doPrint(fieldVal) {
 				ret += fmt.Sprint(strings.ToLower(field.Name), ": ", fieldVal, "\n")
 			}
 		}

@@ -17,13 +17,20 @@ var (
 
 func Test_String(t *testing.T) {
 	type Person struct {
-		Name string
-		Age  int
+		Name    string
+		Surname string
+		Age     int
+		Adult   bool
 	}
 
 	mio := &Person{Name: "Mio", Age: 9}
 	mioStr := String(mio)
-	expc := "name: Mio\nage: 9\n"
+	expc := "name: Mio\nsurname: \nage: 9\nadult: false\n"
+	assert.Equal(t, expc, mioStr)
+
+	mio = &Person{Name: "Mio", Age: 9, Adult: false}
+	mioStr = StringIgnoreZeroValues(mio)
+	expc = "name: Mio\nage: 9\nadult: false\n"
 	assert.Equal(t, expc, mioStr)
 }
 
