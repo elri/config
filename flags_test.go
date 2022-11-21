@@ -3,6 +3,7 @@ package config
 import (
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -474,5 +475,71 @@ func Test_DefaultFlagPrint(t *testing.T) {
 	if exp := 0; got != exp {
 		t.Errorf("Expected exit code: %d, got: %d", exp, got)
 	}
+
+}
+
+func Test_IsString(t *testing.T) {
+	flagSet = testInit()
+
+	_ = flagSet.Bool(b, false, "usage")
+	_ = flagSet.Int(i, 10, "usage")
+	_ = flagSet.String(str, "default flag string", "usage")
+
+	bFlag := LookupFlag(b)
+	iFlag := LookupFlag(i)
+	strFlag := LookupFlag(str)
+
+	assert.False(t, IsString(iFlag))
+	assert.True(t, IsString(strFlag))
+	assert.False(t, IsString(bFlag))
+
+}
+
+func Test_Usage(t *testing.T) {
+	flagSet = testInit()
+
+	usages := map[string]string{
+		b:   "boolean",
+		f64: "floating",
+		i:   "number",
+		i64: "number 64",
+		str: "text",
+		ui:  "unsigned number",
+		d:   "time period",
+	}
+
+	_ = flagSet.Bool(b, false, usages[b])
+	_ = flagSet.Float64(f64, 3.14, usages[f64])
+	_ = flagSet.Int(i, 10, usages[i])
+	_ = flagSet.Int64(i64, 99, usages[i64])
+	_ = flagSet.String(str, "default flag string", usages[str])
+	_ = flagSet.Uint(ui, 20, usages[ui])
+	_ = flagSet.Duration(d, 5*time.Second, usages[d])
+
+	r, w, err := os.Pipe()
+	assert.Nil(t, err)
+
+	flagSet.SetOutput(w)
+
+	Usage()
+
+	output := make([]byte, 1024)
+	_, err = r.Read(output)
+	assert.Nil(t, err)
+
+	for _, u := range usages {
+		assert.Contains(t, string(output), u)
+	}
+
+	assert.Contains(t, string(output), "No default config")
+
+	SetDefaultFile("test/emptydefault.yml")
+
+	Usage()
+	output = make([]byte, 1024)
+	_, err = r.Read(output)
+	assert.Nil(t, err)
+
+	assert.Contains(t, string(output), "Default config file is 'test/emptydefault.yml'")
 
 }

@@ -117,6 +117,7 @@ func (fv *FlagValue) String() string {
 }
 
 func IsString(f *flag.Flag) bool {
+	ensureFlagValue(f)
 	fv := GetFlagValue(f)
 	val := reflect.Indirect(reflect.ValueOf(fv.Value))
 	return val.Kind() == reflect.String

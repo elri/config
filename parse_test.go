@@ -1,7 +1,6 @@
 package config
 
 import (
-	"log"
 	"os"
 	"strings"
 	"testing"
@@ -352,9 +351,7 @@ func Test_writeToDefaultFile(t *testing.T) {
 
 	// Redirect stdin & stdout
 	r, w, err := os.Pipe()
-	if err != nil {
-		log.Fatal(err)
-	}
+	assert.Nil(t, err)
 	origStdout := os.Stdout
 	os.Stdout = w
 	origStdin := os.Stdin
