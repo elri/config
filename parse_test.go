@@ -1,6 +1,8 @@
 package config
 
 import (
+	"log"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -336,4 +338,130 @@ func Test_encode(t *testing.T) {
 			}
 		})
 	}
+}
+
+type TestConf struct {
+	Version string
+}
+
+func newTestConf(v string) *TestConf {
+	return &TestConf{Version: v}
+}
+
+func Test_writeToDefaultFile(t *testing.T) {
+
+	// Redirect stdin & stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		log.Fatal(err)
+	}
+	origStdout := os.Stdout
+	os.Stdout = w
+	origStdin := os.Stdin
+	os.Stdin = r
+
+	// Set default file
+	var f *os.File
+	filepath := "test/wdefault.yml"
+	SetDefaultFile(filepath)
+	defer func() {
+		err = os.Remove(filepath)
+		assert.Nil(t, err)
+	}()
+
+	// Test values
+	initConf := newTestConf("init")
+	fillEmptyConf := newTestConf("fill empty")
+	onlyShowConf := newTestConf("only show")
+	overWriteConf := newTestConf("overwritten")
+
+	tests := []struct {
+		name           string
+		inCfg          *TestConf
+		input          string
+		expectedCfg    *TestConf
+		expectedOutput string
+		purgeFile      bool
+	}{
+		{
+			name:        "Default file does not exist: create and fill it",
+			inCfg:       initConf,
+			expectedCfg: initConf,
+			purgeFile:   true,
+		},
+		{
+			name:        "Default file exists but is empty: fill it",
+			inCfg:       fillEmptyConf,
+			expectedCfg: fillEmptyConf,
+		},
+		{
+			name:           "Default file exists with values: only show",
+			inCfg:          onlyShowConf,
+			expectedCfg:    fillEmptyConf,
+			expectedOutput: "CONTENTS OF '" + filepath + "':\n" + String(fillEmptyConf) + "\n",
+			input:          "s\n",
+		},
+		{
+			name:        "Default file exists with values: abort",
+			inCfg:       overWriteConf,
+			expectedCfg: fillEmptyConf,
+			input:       "n\n",
+		},
+		{
+			name:        "Default file exists with values: overwrite",
+			inCfg:       overWriteConf,
+			expectedCfg: overWriteConf,
+			input:       "y\n",
+		},
+		{
+			name:           "Default file exists with values: faulty input",
+			inCfg:          new(TestConf),
+			input:          "123\n",
+			expectedOutput: "faulty input",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.input != "" {
+				_, err = w.Write([]byte(tt.input))
+				assert.Nil(t, err)
+			}
+
+			err = writeToDefaultFile(tt.inCfg)
+			assert.Nil(t, err)
+
+			if tt.expectedCfg != nil {
+				f, err = os.OpenFile(filepath, os.O_RDWR, 0644)
+				cfg := new(TestConf)
+				err = decode(cfg, f, filepath)
+				assert.Nil(t, err)
+				assert.Equal(t, *tt.expectedCfg, *cfg)
+			}
+
+			if tt.expectedOutput != "" {
+				output := make([]byte, 1024)
+				_, err := r.Read(output)
+				assert.Nil(t, err)
+
+				//fp := fmt.Sprintf("output=\n%d %s\n--\nexpected: %d %s", len(string(output)), string(output), len(tt.expectedOutput), tt.expectedOutput)
+				//origStdout.WriteString(fp)
+
+				assert.True(t, strings.Contains(string(output), tt.expectedOutput))
+			} else {
+				//empty buffer
+				buf := make([]byte, 1024)
+				_, err := r.Read(buf)
+				assert.Nil(t, err)
+			}
+
+			if tt.purgeFile {
+				err = os.Truncate(filepath, 0)
+				assert.Nil(t, err)
+			}
+		})
+	}
+
+	// Restore
+	os.Stdout = origStdout
+	os.Stdin = origStdin
 }

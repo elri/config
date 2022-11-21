@@ -53,6 +53,15 @@ func Test_SetFlagDefault(t *testing.T) {
 	err = SetFlagDefault(ui, "")
 	assert.NotNil(t, err)
 
+	// TODO can this even happen naturally?
+	_ = flagSet.String(str, "false", "usage")
+	f = LookupFlag(str)
+	f.Value = nil
+
+	err = SetFlagDefault(str, "hello")
+	assert.NotNil(t, err)
+	assert.True(t, strings.Contains(err.Error(), "not FlagValue type:"))
+
 }
 
 func Test_FlagValueIsString(t *testing.T) {
@@ -239,6 +248,7 @@ func Test_ensureFlagValue(t *testing.T) {
 	assert.False(t, changed)
 	fv := f.Value.(*FlagValue)
 	assert.Equal(t, copy, *fv)
+
 }
 
 func Test_GetFlagValue(t *testing.T) {
@@ -264,6 +274,21 @@ func Test_GetFlagValue(t *testing.T) {
 
 	fv = GetFlagValue(f)
 	assert.NotNil(t, fv)
+}
+
+func Test_ParsedFlag(t *testing.T) {
+	flagSet := testInit()
+	_ = flagSet.String("randomFlag", "default value", "usage")
+	f := flagSet.Lookup("randomFlag")
+	assert.False(t, ParsedFlag(f))
+
+	ensureFlagValue(f)
+	fv := GetFlagValue(f)
+	fv.parsed = true
+	assert.True(t, ParsedFlag(f))
+
+	f.Value = nil
+	assert.False(t, ParsedFlag(f))
 }
 
 func Test_beforeParse(t *testing.T) {

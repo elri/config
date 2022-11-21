@@ -123,20 +123,26 @@ func IsString(f *flag.Flag) bool {
 }
 
 func GetFlagValue(f *flag.Flag) *FlagValue {
-	fv, ok := f.Value.(*FlagValue)
-	if ok {
-		return fv
-	}
-	fvb, ok := f.Value.(*FlagValueBool)
-	if ok {
-		fv := &FlagValue{Value: fvb.Value, parsed: fvb.parsed}
-		return fv
+	if f.Value != nil {
+		fv, ok := f.Value.(*FlagValue)
+		if ok {
+			return fv
+		}
+		fvb, ok := f.Value.(*FlagValueBool)
+		if ok {
+			fv := &FlagValue{Value: fvb.Value, parsed: fvb.parsed}
+			return fv
+		}
 	}
 	return nil
 
 }
 
 func ensureFlagValue(f *flag.Flag) (changed bool) {
+	if f.Value == nil {
+		// TODO - ContinueOnError default behaviour
+		return
+	}
 	val := reflect.Indirect(reflect.ValueOf(f.Value))
 	typ := reflect.TypeOf(FlagValue{})
 	typ2 := reflect.TypeOf(FlagValueBool{})
