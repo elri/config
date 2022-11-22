@@ -19,6 +19,8 @@ var (
 
 	writedefconf bool
 	printconf    bool
+
+	configErrorHandling flag.ErrorHandling
 )
 
 var osExit = os.Exit //to enable testing
@@ -32,6 +34,25 @@ func init() {
 	flag_defaults = make(map[string]interface{})
 
 	flagSet.Usage = Usage
+}
+
+// Init sets the error handling property.
+// The error handling for the config package is the same as that
+// for the std flag package
+func Init(errorHandling flag.ErrorHandling) {
+	configErrorHandling = errorHandling
+	flagSet.Init("config", errorHandling)
+}
+
+func handleError(err error) {
+	switch configErrorHandling {
+	case flag.ContinueOnError:
+		return
+	case flag.ExitOnError:
+		osExit(2)
+	case flag.PanicOnError:
+		panic(err)
+	}
 }
 
 func SetEnvPrefix(prefix string) {
@@ -48,7 +69,11 @@ func SetEnvsToParse(envVarNames []string) (err error) {
 		if ok {
 			e = strings.ToLower(e)
 			envs[e] = envVar
-		} //else if STOP ON ERROR (TODO)
+		} else {
+			newErr := fmt.Errorf("could not find %s", e)
+			err = addErr(err, newErr)
+			handleError(err)
+		}
 	}
 	return
 }
@@ -93,7 +118,7 @@ func setup(cfg interface{}, filename string, dirs ...string) (err error) {
 			name := strings.ToLower(field.Name)
 			v := envs[name]
 			msg := "type of environmental variable not one that is handled by config"
-			env_err := setFieldString(v, fieldVal, msg)
+			env_err := setFieldString(v, name, fieldVal, msg)
 			if env_err != nil {
 				err = addErr(err, env_err)
 			}
@@ -192,7 +217,7 @@ func setField(toInsert interface{}, fieldVal reflect.Value, defaultMsg string) (
 	return
 }
 
-func setFieldString(toInsert interface{}, fieldVal reflect.Value, defaultMsg string) (err error) {
+func setFieldString(toInsert interface{}, fieldName string, fieldVal reflect.Value, defaultMsg string) (err error) {
 	if toInsert != nil {
 		toInsertVal := reflect.ValueOf(toInsert)
 		var converted interface{}
@@ -224,6 +249,11 @@ func setFieldString(toInsert interface{}, fieldVal reflect.Value, defaultMsg str
 		if err == nil {
 			newVal := reflect.ValueOf(converted)
 			fieldVal.Set(newVal)
+		} else {
+			errStr := fmt.Sprintf("env var '%s' trying to set field '%s' with type %s to '%s' (ignored)", envPrefix+fieldName, fieldName, k, toInsertValStr)
+			err = errors.New(errStr)
+			handleError(err)
+			fmt.Println("WARNING: " + errStr)
 		}
 	}
 	return
@@ -252,8 +282,13 @@ func StringIgnoreZeroValues(c interface{}) string {
 
 func createString(c interface{}, printZeroValues bool) string {
 
-	doPrint := func(field reflect.Value) bool {
-		return !field.IsZero() || field.Kind() == reflect.Bool || printZeroValues
+	doPrint := func(fieldVal reflect.Value) bool {
+		return !fieldVal.IsZero() || fieldVal.Kind() == reflect.Bool || printZeroValues
+	}
+
+	isTime := func(fieldVal reflect.Value) bool {
+		now := time.Now()
+		return reflect.Indirect(fieldVal).Type() == reflect.ValueOf(now).Type()
 	}
 
 	ret := ""
@@ -264,13 +299,18 @@ func createString(c interface{}, printZeroValues bool) string {
 		fieldVal := rv.Field(i)
 		switch fieldVal.Kind() {
 		case reflect.Struct:
-			ret += fmt.Sprintf("%s: \n", strings.ToLower(field.Name))
-			jTyp := fieldVal.Type()
-			for j := 0; j < fieldVal.NumField(); j++ {
-				jField := fieldVal.Field(j)
-				name := strings.ToLower(jTyp.Field(j).Name)
-				if doPrint(jField) {
-					ret += fmt.Sprint("    ", name, ": ", jField, "\n")
+			// Check if time.Time type
+			if isTime(fieldVal) {
+				ret += fmt.Sprint(strings.ToLower(field.Name), ": ", reflect.Indirect(fieldVal), "\n")
+			} else {
+				ret += fmt.Sprintf("%s: \n", strings.ToLower(field.Name))
+				jTyp := fieldVal.Type()
+				for j := 0; j < fieldVal.NumField(); j++ {
+					jField := fieldVal.Field(j)
+					name := strings.ToLower(jTyp.Field(j).Name)
+					if doPrint(jField) {
+						ret += fmt.Sprint("    ", name, ": ", jField, "\n")
+					}
 				}
 			}
 		default:

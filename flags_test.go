@@ -183,6 +183,7 @@ func Test_ParseBoolFLag(t *testing.T) {
 }
 
 func Test_ParseFlags(t *testing.T) {
+	var err error
 	flagSet := testInit()
 
 	_ = flagSet.Bool(b, false, "usage")
@@ -193,15 +194,17 @@ func Test_ParseFlags(t *testing.T) {
 	_ = flagSet.Uint(ui, 20, "usage")
 	_ = flagSet.Duration(d, 5*time.Second, "usage")
 
-	flags := map[string]*flag.Flag{
-		b:   LookupFlag(b),
-		f64: LookupFlag(f64),
-		i:   LookupFlag(i),
-		i64: LookupFlag(i64),
-		str: LookupFlag(str),
-		ui:  LookupFlag(ui),
-		d:   LookupFlag(d)}
+	// only given flag is default flag '-write def conf'
+	SetFlagSetArgs([]string{"-write-def-conf"})
+	err = ParseFlags()
+	assert.Nil(t, err)
 
+	//only given flag is default flag '-print-conf'
+	SetFlagSetArgs([]string{"-print-conf"})
+	err = ParseFlags()
+	assert.Nil(t, err)
+
+	//Parsed
 	args := []string{
 		"-f64", "3.1415",
 		"-i", "342",
@@ -210,9 +213,17 @@ func Test_ParseFlags(t *testing.T) {
 	}
 	SetFlagSetArgs(args)
 
-	//parse
-	err := ParseFlags()
+	err = ParseFlags()
 	assert.Nil(t, err)
+
+	flags := map[string]*flag.Flag{
+		b:   LookupFlag(b),
+		f64: LookupFlag(f64),
+		i:   LookupFlag(i),
+		i64: LookupFlag(i64),
+		str: LookupFlag(str),
+		ui:  LookupFlag(ui),
+		d:   LookupFlag(d)}
 
 	for _, arg := range args {
 		argSplit := strings.Split(arg, "-")
@@ -359,6 +370,11 @@ func Test_afterParse(t *testing.T) {
 		f.Value = &FlagValue{Value: f.Value}
 	})
 
+	// no flags added if parse hasn't happened
+	// continueonerror is default so nothing happens
+	flagSet.VisitAll(afterParse())
+	assert.Equal(t, flags, make(map[string]interface{}))
+
 	err := flagSet.Parse(args)
 	assert.Nil(t, err)
 
@@ -454,8 +470,7 @@ func Test_DefaultFlagPrint(t *testing.T) {
 	args_print := []string{"-write-def-conf", "-print-conf"}
 	SetFlagSetArgs(args_print)
 
-	var err error
-	err = ParseFlags()
+	err := ParseFlags()
 	assert.Nil(t, err)
 
 	// intercept exit func

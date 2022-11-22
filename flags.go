@@ -141,7 +141,8 @@ func GetFlagValue(f *flag.Flag) *FlagValue {
 
 func ensureFlagValue(f *flag.Flag) (changed bool) {
 	if f.Value == nil {
-		// TODO - ContinueOnError default behaviour
+		err := errors.New("flag Value is nil")
+		handleError(err)
 		return
 	}
 	val := reflect.Indirect(reflect.ValueOf(f.Value))
@@ -223,7 +224,9 @@ func beforeParse() func(*flag.Flag) {
 func afterParse() func(*flag.Flag) {
 	return func(f *flag.Flag) {
 		if !flagSet.Parsed() {
-			panic(errors.New("flagSet not parsed")) //TODO
+			err := errors.New("flagSet not parsed")
+			handleError(err)
+			//			panic(errors.New("flagSet not parsed")) //TODO
 		}
 		if ParsedFlag(f) {
 			if f.Name == printConfFlagName && f.Value.String() == "true" {
@@ -275,9 +278,9 @@ func addFlagValueToMap(m map[string]interface{}, f *flag.Flag, value string) {
 		m[name], err = strconv.ParseUint(value, 10, 64)
 	}
 
-	if err != nil {
+	if err != nil { //probably won't reach here, flag.Parse() will protest before this
 		fmt.Println("panicking in addFlagValueToMap", f.Name, value)
-		panic(err) //TODO . but probably won't reach here, flag.Parse() will protest before this
+		handleError(err)
 	}
 
 }

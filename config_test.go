@@ -5,6 +5,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -34,8 +35,78 @@ func Test_String(t *testing.T) {
 	assert.Equal(t, expc, mioStr)
 }
 
+func Test_handleError(t *testing.T) {
+	/*	errStr := "handleError testing"
+		err := errors.New(errStr)
+
+		// CONTINUEONERROR
+		Init(flag.ContinueOnError)
+		handleError(err)
+		//nothing happens
+
+		// EXITONERROR
+		Init(flag.ExitOnError)
+
+		// intercept exit func
+		oldOsExit := osExit
+		defer func() { osExit = oldOsExit }()
+
+		var got int
+		myExit := func(code int) {
+			got = code
+		}
+
+		osExit = myExit
+
+		// parse conf
+		handleError(err)
+		if exp := 2; got != exp {
+			t.Errorf("Expected exit code: %d, got: %d", exp, got)
+		}
+	*/
+}
+
+func Test_SetEnvsToParse(t *testing.T) {
+	resetConfig()
+	SetEnvPrefix("CONFTEST_")
+
+	envs := make(map[string]string, 0)
+	envs["env1"] = "text"
+	envs["env2"] = "3.141595"
+	envs["env3"] = "true"
+	envs["env4"] = "79"
+
+	envStrs := []string{"env1", "env2", "env3", "env4"}
+
+	err := SetEnvsToParse(envStrs)
+	assert.NotNil(t, err)
+	for _, e := range envStrs {
+		exp := fmt.Sprintf("could not find %s", e)
+		assert.Contains(t, err.Error(), exp)
+	}
+
+	for e, v := range envs {
+		envVarName := "CONFTEST_" + e
+		os.Setenv(envVarName, v)
+	}
+	err = SetEnvsToParse(envStrs)
+	assert.Nil(t, err)
+
+	for _, env := range envStrs {
+		err = os.Unsetenv("CONFTEST_" + env)
+		assert.Nil(t, err)
+	}
+}
+
 func Test_ConfigDefault(t *testing.T) {
 	var err error
+
+	// don't care if default file doesn't exist
+	err = SetDefaultFile("doesntexist.yml")
+	assert.NotNil(t, err)
+
+	err = SetUpConfiguration(new(TestConfig))
+	assert.Nil(t, err)
 
 	// set default config file
 	err = SetDefaultFile(DEFAULT_TEST_CONFIG)
@@ -112,6 +183,61 @@ func Test_ConfigEnv(t *testing.T) {
 		err = os.Unsetenv("CONFTEST_" + env)
 		assert.Nil(t, err)
 	}
+
+}
+
+func Test_ConfigEnvFaultyVals(t *testing.T) {
+	var err error
+
+	// Redirect stdin & stdout
+	var r, w *os.File
+	r, w, err = os.Pipe()
+	assert.Nil(t, err)
+	origStdout := os.Stdout
+	os.Stdout = w
+	origStdin := os.Stdin
+	os.Stdin = r
+	defer func() {
+		// Restore
+		os.Stdout = origStdout
+		os.Stdin = origStdin
+	}()
+
+	resetConfig()
+
+	// env setup
+	SetEnvPrefix("CONFTEST_")
+
+	envs := make(map[string]string, 0)
+	envs["Pim"] = "3.141595"
+	envs["Pi"] = "env_pim"
+	envs["Dreams"] = "79"
+	envs["Age"] = "true"
+
+	envStrs := make([]string, 0)
+	for e, v := range envs {
+		envStrs = append(envStrs, e)
+		envVarName := "CONFTEST_" + e
+		os.Setenv(envVarName, v)
+	}
+
+	err = SetEnvsToParse(envStrs)
+	assert.Nil(t, err)
+
+	// set default config file
+	err = SetDefaultFile(DEFAULT_TEST_CONFIG)
+	assert.Nil(t, err)
+
+	// get config
+	conf := new(TestConfig)
+	err = SetUpConfigurationWithConfigFile(conf, "test/test.yml")
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "ignored")
+
+	output := make([]byte, 1024)
+	_, err = r.Read(output)
+	assert.Nil(t, err)
+	assert.Contains(t, string(output), "WARNING")
 
 }
 
@@ -347,9 +473,11 @@ func Test_setFieldString(t *testing.T) {
 	rv := reflect.ValueOf(ms).Elem()
 	typ := rv.Type()
 	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
 		fieldVal := rv.Field(i)
+		name := strings.ToLower(field.Name)
 
-		err := setFieldString(wrong[i], fieldVal, "arbitrary error msg")
+		err := setFieldString(wrong[i], name, fieldVal, "arbitrary error msg")
 		assert.NotNil(t, err)
 	}
 }

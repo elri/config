@@ -26,7 +26,9 @@ func SetDefaultFile(fpath string) (err error) {
 
 	var f *os.File
 	f, err = os.Open(fpath)
-	if err == nil {
+	if err != nil {
+		err = fmt.Errorf("failed to set default file '%s': %s", fpath, err.Error())
+		handleError(err)
 		//fmt.Println("DEBUG DefaultFile set successfully", defaultFile)
 	}
 	defer f.Close()
