@@ -93,7 +93,7 @@ func setup(cfg interface{}, filename string, dirs ...string) (err error) {
 			name := strings.ToLower(field.Name)
 			v := envs[name]
 			msg := "type of environmental variable not one that is handled by config"
-			env_err := setFieldString(v, fieldVal, msg)
+			env_err := setFieldString(v, name, fieldVal, msg)
 			if env_err != nil {
 				err = addErr(err, env_err)
 			}
@@ -192,7 +192,7 @@ func setField(toInsert interface{}, fieldVal reflect.Value, defaultMsg string) (
 	return
 }
 
-func setFieldString(toInsert interface{}, fieldVal reflect.Value, defaultMsg string) (err error) {
+func setFieldString(toInsert interface{}, fieldName string, fieldVal reflect.Value, defaultMsg string) (err error) {
 	if toInsert != nil {
 		toInsertVal := reflect.ValueOf(toInsert)
 		var converted interface{}
@@ -224,6 +224,10 @@ func setFieldString(toInsert interface{}, fieldVal reflect.Value, defaultMsg str
 		if err == nil {
 			newVal := reflect.ValueOf(converted)
 			fieldVal.Set(newVal)
+		} else { //TODO ContinueOnError
+			errStr := fmt.Sprintf("env var '%s' trying to set field '%s' with type %s to '%s' (ignored)", envPrefix+fieldName, fieldName, k, toInsertValStr)
+			err = errors.New(errStr)
+			fmt.Println("WARNING: " + errStr)
 		}
 	}
 	return

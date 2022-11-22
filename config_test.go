@@ -5,6 +5,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -112,6 +113,61 @@ func Test_ConfigEnv(t *testing.T) {
 		err = os.Unsetenv("CONFTEST_" + env)
 		assert.Nil(t, err)
 	}
+
+}
+
+func Test_ConfigEnvFaultyVals(t *testing.T) {
+	var err error
+
+	// Redirect stdin & stdout
+	var r, w *os.File
+	r, w, err = os.Pipe()
+	assert.Nil(t, err)
+	origStdout := os.Stdout
+	os.Stdout = w
+	origStdin := os.Stdin
+	os.Stdin = r
+	defer func() {
+		// Restore
+		os.Stdout = origStdout
+		os.Stdin = origStdin
+	}()
+
+	resetConfig()
+
+	// env setup
+	SetEnvPrefix("CONFTEST_")
+
+	envs := make(map[string]string, 0)
+	envs["Pim"] = "3.141595"
+	envs["Pi"] = "env_pim"
+	envs["Dreams"] = "79"
+	envs["Age"] = "true"
+
+	envStrs := make([]string, 0)
+	for e, v := range envs {
+		envStrs = append(envStrs, e)
+		envVarName := "CONFTEST_" + e
+		os.Setenv(envVarName, v)
+	}
+
+	err = SetEnvsToParse(envStrs)
+	assert.Nil(t, err)
+
+	// set default config file
+	err = SetDefaultFile(DEFAULT_TEST_CONFIG)
+	assert.Nil(t, err)
+
+	// get config
+	conf := new(TestConfig)
+	err = SetUpConfigurationWithConfigFile(conf, "test/test.yml")
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "ignored")
+
+	output := make([]byte, 1024)
+	_, err = r.Read(output)
+	assert.Nil(t, err)
+	assert.Contains(t, string(output), "WARNING")
 
 }
 
@@ -347,9 +403,11 @@ func Test_setFieldString(t *testing.T) {
 	rv := reflect.ValueOf(ms).Elem()
 	typ := rv.Type()
 	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
 		fieldVal := rv.Field(i)
+		name := strings.ToLower(field.Name)
 
-		err := setFieldString(wrong[i], fieldVal, "arbitrary error msg")
+		err := setFieldString(wrong[i], name, fieldVal, "arbitrary error msg")
 		assert.NotNil(t, err)
 	}
 }
