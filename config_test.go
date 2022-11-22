@@ -35,6 +35,69 @@ func Test_String(t *testing.T) {
 	assert.Equal(t, expc, mioStr)
 }
 
+func Test_handleError(t *testing.T) {
+	/*	errStr := "handleError testing"
+		err := errors.New(errStr)
+
+		// CONTINUEONERROR
+		Init(flag.ContinueOnError)
+		handleError(err)
+		//nothing happens
+
+		// EXITONERROR
+		Init(flag.ExitOnError)
+
+		// intercept exit func
+		oldOsExit := osExit
+		defer func() { osExit = oldOsExit }()
+
+		var got int
+		myExit := func(code int) {
+			got = code
+		}
+
+		osExit = myExit
+
+		// parse conf
+		handleError(err)
+		if exp := 2; got != exp {
+			t.Errorf("Expected exit code: %d, got: %d", exp, got)
+		}
+	*/
+}
+
+func Test_SetEnvsToParse(t *testing.T) {
+	resetConfig()
+	SetEnvPrefix("CONFTEST_")
+
+	envs := make(map[string]string, 0)
+	envs["env1"] = "text"
+	envs["env2"] = "3.141595"
+	envs["env3"] = "true"
+	envs["env4"] = "79"
+
+	envStrs := []string{"env1", "env2", "env3", "env4"}
+
+	err := SetEnvsToParse(envStrs)
+	assert.NotNil(t, err)
+	for _, e := range envStrs {
+		exp := fmt.Sprintf("could not find %s", e)
+		assert.Contains(t, err.Error(), exp)
+	}
+
+	for e, v := range envs {
+		envVarName := "CONFTEST_" + e
+		os.Setenv(envVarName, v)
+	}
+	err = SetEnvsToParse(envStrs)
+	assert.Nil(t, err)
+
+	for _, env := range envStrs {
+		err = os.Unsetenv("CONFTEST_" + env)
+		assert.Nil(t, err)
+	}
+}
+
 func Test_ConfigDefault(t *testing.T) {
 	var err error
 

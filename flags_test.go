@@ -454,8 +454,7 @@ func Test_DefaultFlagPrint(t *testing.T) {
 	args_print := []string{"-write-def-conf", "-print-conf"}
 	SetFlagSetArgs(args_print)
 
-	var err error
-	err = ParseFlags()
+	err := ParseFlags()
 	assert.Nil(t, err)
 
 	// intercept exit func
