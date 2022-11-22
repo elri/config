@@ -256,8 +256,13 @@ func StringIgnoreZeroValues(c interface{}) string {
 
 func createString(c interface{}, printZeroValues bool) string {
 
-	doPrint := func(field reflect.Value) bool {
-		return !field.IsZero() || field.Kind() == reflect.Bool || printZeroValues
+	doPrint := func(fieldVal reflect.Value) bool {
+		return !fieldVal.IsZero() || fieldVal.Kind() == reflect.Bool || printZeroValues
+	}
+
+	isTime := func(fieldVal reflect.Value) bool {
+		now := time.Now()
+		return reflect.Indirect(fieldVal).Type() == reflect.ValueOf(now).Type()
 	}
 
 	ret := ""
@@ -268,13 +273,18 @@ func createString(c interface{}, printZeroValues bool) string {
 		fieldVal := rv.Field(i)
 		switch fieldVal.Kind() {
 		case reflect.Struct:
-			ret += fmt.Sprintf("%s: \n", strings.ToLower(field.Name))
-			jTyp := fieldVal.Type()
-			for j := 0; j < fieldVal.NumField(); j++ {
-				jField := fieldVal.Field(j)
-				name := strings.ToLower(jTyp.Field(j).Name)
-				if doPrint(jField) {
-					ret += fmt.Sprint("    ", name, ": ", jField, "\n")
+			// Check if time.Time type
+			if isTime(fieldVal) {
+				ret += fmt.Sprint(strings.ToLower(field.Name), ": ", reflect.Indirect(fieldVal), "\n")
+			} else {
+				ret += fmt.Sprintf("%s: \n", strings.ToLower(field.Name))
+				jTyp := fieldVal.Type()
+				for j := 0; j < fieldVal.NumField(); j++ {
+					jField := fieldVal.Field(j)
+					name := strings.ToLower(jTyp.Field(j).Name)
+					if doPrint(jField) {
+						ret += fmt.Sprint("    ", name, ": ", jField, "\n")
+					}
 				}
 			}
 		default:
