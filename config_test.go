@@ -101,6 +101,13 @@ func Test_SetEnvsToParse(t *testing.T) {
 func Test_ConfigDefault(t *testing.T) {
 	var err error
 
+	// don't care if default file doesn't exist
+	err = SetDefaultFile("doesntexist.yml")
+	assert.NotNil(t, err)
+
+	err = SetUpConfiguration(new(TestConfig))
+	assert.Nil(t, err)
+
 	// set default config file
 	err = SetDefaultFile(DEFAULT_TEST_CONFIG)
 	assert.Nil(t, err)
