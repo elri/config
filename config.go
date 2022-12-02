@@ -13,6 +13,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+type ErrorHandling flag.ErrorHandling //aliasing for clarity
+
+var osExit = os.Exit //to enable testing
+
 var (
 	envs      map[string]interface{}
 	envPrefix string
@@ -20,10 +24,15 @@ var (
 	writedefconf bool
 	printconf    bool
 
-	configErrorHandling flag.ErrorHandling
+	configErrorHandling ErrorHandling
 )
 
-var osExit = os.Exit //to enable testing
+const (
+	ContinueOnError = ErrorHandling(flag.ContinueOnError) // Return a descriptive error.
+	ExitOnError     = ErrorHandling(flag.ExitOnError)     // Call os.Exit(2) or for -h/-help Exit(0).
+	PanicOnError    = ErrorHandling(flag.PanicOnError)    // Call panic with a descriptive error.
+)
+
 var ErrNotAPointer = errors.New("cfg should be pointer")
 
 func init() {
@@ -39,18 +48,18 @@ func init() {
 // Init sets the error handling property.
 // The error handling for the config package is the same as that
 // for the std flag package
-func Init(errorHandling flag.ErrorHandling) {
+func Init(errorHandling ErrorHandling) {
 	configErrorHandling = errorHandling
-	flagSet.Init("config", errorHandling)
+	flagSet.Init("config", flag.ErrorHandling(errorHandling))
 }
 
 func handleError(err error) {
 	switch configErrorHandling {
-	case flag.ContinueOnError:
+	case ContinueOnError:
 		return
-	case flag.ExitOnError:
+	case ExitOnError:
 		osExit(2)
-	case flag.PanicOnError:
+	case PanicOnError:
 		panic(err)
 	}
 }
@@ -141,6 +150,10 @@ func setup(cfg interface{}, filename string, dirs ...string) (err error) {
 		fmt.Println("CONFIGURATION:")
 		fmt.Println(String(cfg))
 		osExit(0)
+	}
+
+	if err != nil {
+		handleError(err)
 	}
 
 	return
