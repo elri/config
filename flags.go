@@ -32,7 +32,7 @@ func SetFlagSet(f *flag.FlagSet) {
 	flagSet = f
 
 	_ = flagSet.Bool(writeConfFlagName, false, "writes default configuration to default file. if default file already exists, options of overwrite, show and abort are given. ")
-	_ = flagSet.Bool(printConfFlagName, false, " prints configuration for current run. if combined with write-def-conf the print format is that of default file.")
+	_ = flagSet.Bool(printConfFlagName, false, "prints configuration for current run. if combined with write-def-conf the print format is that of default file.")
 }
 
 /*
