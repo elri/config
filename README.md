@@ -23,7 +23,7 @@ Defaults : {
         "port": 99,
 }
 
-Config : {
+Given config file : {
 		"user": "root"
 		"secret": "confsecret"
 }
@@ -53,6 +53,7 @@ The config files may be of the following types:
 - toml
 - yml
 - json
+
 
 ## Keep in mind
 - There is no case sensitivty, i.e. "pim", "Pim" and "PIM" are all considered the same
