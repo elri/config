@@ -25,6 +25,9 @@ var (
 	printConfFlagName = "print-conf"
 )
 
+/*
+Set config package's global FlagSet.
+*/
 func SetFlagSet(f *flag.FlagSet) {
 	flagSet = f
 
@@ -32,19 +35,36 @@ func SetFlagSet(f *flag.FlagSet) {
 	_ = flagSet.Bool(printConfFlagName, false, " prints configuration for current run. if combined with write-def-conf the print format is that of default file.")
 }
 
+/*
+Set a list of flags to parse. As default, args is set os os.Args[1:], the command-line args.
+
+SetFlagSetArgs is particularly useful for testing.
+*/
 func SetFlagSetArgs(args []string) {
 	flagSetArgs = args
 }
 
+/*
+Returns a map of all flag defaults. The key is the flag name and the value the flag's default value.
+*/
 func GetDefaultFlags() map[string]interface{} {
 	return flag_defaults
 }
 
+/*
+Returns the Flag structure of the named flag of the global flag set, returning nil if none exists. By default, the global flag set is that of the command-line.
+*/
 func LookupFlag(name string) *flag.Flag {
 	return flagSet.Lookup(name)
 }
 
-//based on flag package's PrintDefaults()
+/*
+Usage prints a usage message documenting all defined command-line flags to the set FlagSet's output, which by default is os.Stderr.
+It is  based on the standard flag package's PrintDefaults() but includes two more default flags in addition to 'help':
+write-def-conf (write to default config file) and print-conf (print current configuration to stdout).
+
+Usage is called when an error occurs while parsing flags.
+*/
 func Usage() {
 	fmt.Fprintf(flagSet.Output(), "Usage of %s:\n", os.Args[0])
 
@@ -77,7 +97,7 @@ func Usage() {
 
 		if f.Name != writeConfFlagName && f.Name != printConfFlagName {
 			if !reflect.ValueOf(f.DefValue).IsZero() {
-				if IsString(f) {
+				if isString(f) {
 					// put quotes on the value
 					fmt.Fprintf(&b, " (default %q)", f.DefValue)
 				} else {
@@ -94,20 +114,28 @@ func Usage() {
 
 // Value type insert
 
+/*
+FlagValue is a wrapper for flag.Value, which stores the dynamic value of a flag, and information on if the flag has been parsed.
+*/
 type FlagValue struct {
 	Value  flag.Value
 	parsed bool
 }
 
+// Used for setting the value of a flag without setting flag to 'parsed'
 func (fv *FlagValue) defSet(val string) error {
 	return fv.Value.Set(val)
 }
 
+/*
+Intercepts the standard flag package's Set().
+*/
 func (fv *FlagValue) Set(val string) error {
 	fv.parsed = true
 	return fv.Value.Set(val)
 }
 
+//Intercepts the standard flag package's String().
 func (fv *FlagValue) String() string {
 	var ret string
 	if fv.Value != nil {
@@ -116,14 +144,16 @@ func (fv *FlagValue) String() string {
 	return ret
 }
 
-func IsString(f *flag.Flag) bool {
+// check if the value of type flag is string
+func isString(f *flag.Flag) bool {
 	ensureFlagValue(f)
-	fv := GetFlagValue(f)
+	fv := getFlagValue(f)
 	val := reflect.Indirect(reflect.ValueOf(fv.Value))
 	return val.Kind() == reflect.String
 }
 
-func GetFlagValue(f *flag.Flag) *FlagValue {
+// get the FlagValue from a flag
+func getFlagValue(f *flag.Flag) *FlagValue {
 	if f.Value != nil {
 		fv, ok := f.Value.(*FlagValue)
 		if ok {
@@ -139,6 +169,7 @@ func GetFlagValue(f *flag.Flag) *FlagValue {
 
 }
 
+// ensure that the flag's Value has been exchanged for a FlagValue
 func ensureFlagValue(f *flag.Flag) (changed bool) {
 	if f.Value == nil {
 		err := errors.New("flag Value is nil")
@@ -164,15 +195,21 @@ func ensureFlagValue(f *flag.Flag) (changed bool) {
 	return
 }
 
-// Special case for bool to enable using bool flags like switches
+/*
+Implements flag package's boolFlag interface. Special case to enable using bool flags like switches.
+*/
 type FlagValueBool struct {
 	FlagValue
 }
 
+//Intercepts the standard flag package's IsBoolFlag().
 func (fvb *FlagValueBool) IsBoolFlag() bool { return true }
 
 // Flag Parsing
 
+/*
+Parses flags, stores all default flags in a list, and all parsed flags in another.
+*/
 func ParseFlags() error {
 	flagSet.VisitAll(beforeParse())
 	err := flagSet.Parse(flagSetArgs)
@@ -186,9 +223,12 @@ func ParseFlags() error {
 	return err
 }
 
+/*
+Checks if a flag has been parsed.
+*/
 func ParsedFlag(f *flag.Flag) bool {
 	ensureFlagValue(f)
-	fv := GetFlagValue(f)
+	fv := getFlagValue(f)
 	if fv != nil {
 		return fv.parsed
 	}
@@ -199,6 +239,9 @@ func addToFlagDefaults(f *flag.Flag, defVal string) {
 	addFlagValueToMap(flag_defaults, f, defVal)
 }
 
+/*
+Set, or reset, the default value of a flag.
+*/
 func SetFlagDefault(fName, def string) error {
 	f := LookupFlag(fName)
 	if f == nil {
@@ -207,7 +250,7 @@ func SetFlagDefault(fName, def string) error {
 	addToFlagDefaults(f, def)
 	ensureFlagValue(f)
 	f.DefValue = def
-	fv := GetFlagValue(f)
+	fv := getFlagValue(f)
 	if fv != nil {
 		return fv.defSet(def)
 	}
@@ -215,18 +258,23 @@ func SetFlagDefault(fName, def string) error {
 	return errors.New(errMsg)
 }
 
+/*
+before parsing flags: Add all flag default values to global flag default map
+*/
 func beforeParse() func(*flag.Flag) {
 	return func(f *flag.Flag) {
 		addToFlagDefaults(f, f.DefValue)
 	}
 }
 
+/*
+after parsing flags: add all parsed flag's values to global flag value map
+*/
 func afterParse() func(*flag.Flag) {
 	return func(f *flag.Flag) {
 		if !flagSet.Parsed() {
 			err := errors.New("flagSet not parsed")
 			handleError(err)
-			//			panic(errors.New("flagSet not parsed")) //TODO
 		}
 		if ParsedFlag(f) {
 			if f.Name == printConfFlagName && f.Value.String() == "true" {
@@ -246,7 +294,7 @@ func addFlagValueToMap(m map[string]interface{}, f *flag.Flag, value string) {
 
 	//Get reflect.Kind of the data that's stored in the Flag
 	ensureFlagValue(f)
-	fv := GetFlagValue(f)
+	fv := getFlagValue(f)
 	if fv == nil { //TODO if debug
 		log.Println("not FlagValue type: ", reflect.TypeOf(f.Value))
 		return

@@ -90,9 +90,9 @@ func Test_FlagValueIsString(t *testing.T) {
 
 	for k, f := range flags {
 		if k != str {
-			assert.False(t, IsString(f))
+			assert.False(t, isString(f))
 		} else {
-			assert.True(t, IsString(f))
+			assert.True(t, isString(f))
 		}
 	}
 }
@@ -154,7 +154,7 @@ func Test_ParseBoolFLag(t *testing.T) {
 		flagSet := testInit()
 
 		fBool := flagSet.Bool(b, tt.defValue, "usage")
-		fmt.Println(tt.name, fBool)
+		//fmt.Println(tt.name, fBool)
 
 		args := make([]string, 0)
 		if tt.set {
@@ -270,13 +270,13 @@ func Test_GetFlagValue(t *testing.T) {
 	f := flagSet.Lookup(str)
 
 	//Not
-	fv := GetFlagValue(f)
+	fv := getFlagValue(f)
 	assert.Nil(t, fv)
 
 	//FlagValue
 	f.Value = &FlagValue{Value: f.Value}
 
-	fv = GetFlagValue(f)
+	fv = getFlagValue(f)
 	assert.NotNil(t, fv)
 
 	//FlagValueBool
@@ -284,7 +284,7 @@ func Test_GetFlagValue(t *testing.T) {
 	fvb.Value = fv.Value
 	f.Value = fvb
 
-	fv = GetFlagValue(f)
+	fv = getFlagValue(f)
 	assert.NotNil(t, fv)
 }
 
@@ -295,7 +295,7 @@ func Test_ParsedFlag(t *testing.T) {
 	assert.False(t, ParsedFlag(f))
 
 	ensureFlagValue(f)
-	fv := GetFlagValue(f)
+	fv := getFlagValue(f)
 	fv.parsed = true
 	assert.True(t, ParsedFlag(f))
 
@@ -504,9 +504,9 @@ func Test_IsString(t *testing.T) {
 	iFlag := LookupFlag(i)
 	strFlag := LookupFlag(str)
 
-	assert.False(t, IsString(iFlag))
-	assert.True(t, IsString(strFlag))
-	assert.False(t, IsString(bFlag))
+	assert.False(t, isString(iFlag))
+	assert.True(t, isString(strFlag))
+	assert.False(t, isString(bFlag))
 
 }
 
