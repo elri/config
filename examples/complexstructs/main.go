@@ -35,14 +35,20 @@ type Configuration struct {
 	Bottles []Bottle `yaml:"bottles" toml:"bottles"`
 }
 
-func main() {
-	config.SetDefaultFile("default_conf.yml")
+func createConfig() *Configuration {
+	config.Init(config.PanicOnError)
+
+	//The default file path must be absolut path, since config is set to PanicOnError, the setup will panic if run outside exmaples/complexstructs/
+	config.SetDefaultFile("default_conf.toml")
 
 	cfg := new(Configuration)
-	err := config.SetUpConfiguration(cfg)
-	if err != nil {
-		panic(err)
-	}
+	config.SetUpConfiguration(cfg) //disregards error here since error handling mode is set to panic
+
+	return cfg
+}
+
+func main() {
+	cfg := createConfig()
 
 	fmt.Println(cfg.Welcome)
 	fmt.Println("Now printing", cfg.Owner.Name+"'s bottles of "+cfg.Type)

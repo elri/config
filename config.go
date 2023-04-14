@@ -13,6 +13,11 @@ import (
 	"github.com/pkg/errors"
 )
 
+//Aliasing flag.Errorhandling for clarity and easy of use.
+type ErrorHandling flag.ErrorHandling
+
+var osExit = os.Exit //to enable testing
+
 var (
 	envs      map[string]interface{}
 	envPrefix string
@@ -20,11 +25,14 @@ var (
 	writedefconf bool
 	printconf    bool
 
-	configErrorHandling flag.ErrorHandling
+	configErrorHandling ErrorHandling
 )
 
-var osExit = os.Exit //to enable testing
-var ErrNotAPointer = errors.New("cfg should be pointer")
+const (
+	ContinueOnError = ErrorHandling(flag.ContinueOnError) // Return a descriptive error.
+	ExitOnError     = ErrorHandling(flag.ExitOnError)     // Call os.Exit(2) or for -h/-help Exit(0).
+	PanicOnError    = ErrorHandling(flag.PanicOnError)    // Call panic with a descriptive error.
+)
 
 func init() {
 	envs = make(map[string]interface{})
@@ -36,34 +44,56 @@ func init() {
 	flagSet.Usage = Usage
 }
 
-// Init sets the error handling property.
-// The error handling for the config package is the same as that
-// for the std flag package
-func Init(errorHandling flag.ErrorHandling) {
+/*
+Init sets the global error handling property, as well as the error handling property for the flagset.
+
+The error handling for the config package is similar to that of the standard flag package;
+there are three modes: Continue, Panic and Exit.
+
+The default mode is Continue.
+*/
+func Init(errorHandling ErrorHandling) {
 	configErrorHandling = errorHandling
-	flagSet.Init("config", errorHandling)
+	flagSet.Init("elri/config", flag.ErrorHandling(errorHandling))
 }
 
 func handleError(err error) {
 	switch configErrorHandling {
-	case flag.ContinueOnError:
+	case ContinueOnError:
 		return
-	case flag.ExitOnError:
+	case ExitOnError:
 		osExit(2)
-	case flag.PanicOnError:
+	case PanicOnError:
 		panic(err)
 	}
 }
 
+/*
+Set a prefix to use for all environmental variables.
+
+For example to different between what is used in testing and otherwise, the prefix "TEST_" could be used.
+The environmental variables TEST_timeout and TEST_angle would then map to the properties 'timeout' and 'angle'.
+*/
 func SetEnvPrefix(prefix string) {
 	envPrefix = prefix
 }
 
+/*
+Set a list of environmental variable names to check when filling out the configuration struct.
+
+The list can consist of variables both containing a set env prefix and not, but the environmental variable that is looked for will be that with the prefix.
+That is, if the prefix is set as TEST_ and the list envVarNames is ["timeout", "TEST_angle"], the environmental variables that will be looked for are ["TEST_timeout", "TEST_angle"].
+
+If the environmental variable(s) cannot be find, SetEnvsToParse will return an error containing all the names of the non-existant variables. Note that the error will only be return if
+the error handling mode is set to ContinueOnError, else the function will Panic or Exit depending on the mode.
+*/
 func SetEnvsToParse(envVarNames []string) (err error) {
 	for _, e := range envVarNames {
 		eFull := e
 		if envPrefix != "" {
-			eFull = envPrefix + e
+			if !strings.HasPrefix(eFull, envPrefix) {
+				eFull = envPrefix + e
+			}
 		}
 		envVar, ok := os.LookupEnv(eFull)
 		if ok {
@@ -78,10 +108,24 @@ func SetEnvsToParse(envVarNames []string) (err error) {
 	return
 }
 
+/*
+	Parse all the sources (flags, env vars, default config file) and store the result in the value pointer to by cfg.
+
+	If cfg is not a pointer, SetUpConfiguration returns an ErrNotAPointer.
+
+*/
 func SetUpConfiguration(cfg interface{}) (err error) {
 	return setup(cfg, "")
 }
 
+/*
+	Parse all the sources (flags, env vars, given config file, default config file) and store the result in the value pointer to by cfg.
+
+	If cfg is not a pointer, SetUpConfigurationWithConfigFile returns an ErrNotAPointer.
+
+	The 'filename' must either be an absolute path to the config file, exist in the current working directory, or in one of the directories given as 'dirs'. If the given file cannot be found, the other sources will still be parsed, but an ErrNoConfigFileToParse will be returned.
+
+*/
 func SetUpConfigurationWithConfigFile(cfg interface{}, filename string, dirs ...string) (err error) {
 	return setup(cfg, filename)
 }
@@ -89,7 +133,8 @@ func SetUpConfigurationWithConfigFile(cfg interface{}, filename string, dirs ...
 func setup(cfg interface{}, filename string, dirs ...string) (err error) {
 	//Check that cfg is pointer
 	if reflect.ValueOf(cfg).Kind() != reflect.Ptr {
-		return fmt.Errorf("invalid argument: "+ErrNotAPointer.Error()+"but is %s", reflect.ValueOf(cfg).Kind())
+		err = fmt.Errorf("[setup]: %w ", ErrNotAPointer)
+		return
 	}
 
 	// DEFAULT CONFIG FILE
@@ -102,10 +147,7 @@ func setup(cfg interface{}, filename string, dirs ...string) (err error) {
 
 	// GIVEN CONFIG FILE
 	if filename != "" {
-		cf_err := ParseConfigFile(cfg, filename, dirs...)
-		if cf_err != nil {
-			err = addErr(err, cf_err)
-		}
+		err = ParseConfigFile(cfg, filename, dirs...)
 	}
 
 	// ENVIRONMENTAL VARIABLES
@@ -141,6 +183,10 @@ func setup(cfg interface{}, filename string, dirs ...string) (err error) {
 		fmt.Println("CONFIGURATION:")
 		fmt.Println(String(cfg))
 		osExit(0)
+	}
+
+	if err != nil {
+		handleError(err)
 	}
 
 	return
@@ -259,23 +305,29 @@ func setFieldString(toInsert interface{}, fieldName string, fieldVal reflect.Val
 	return
 }
 
-// Creates a string given a ptr to a struct
-// E.g.
-// type Person struct {
-//	Name string
-// 	Age int
-// }
-//
-// mio := &Person{Name: "Mio", Age: 9}
-//
-// String(mio):
-// name: Mio
-// age: 9
+/*
+Creates a string given a ptr to a struct.
+
+Example:
+ type Person struct {
+	Name string
+ 	Age int
+ }
+
+ func printMio() {
+	 mio := &Person{Name: "Mio", Age: 9}
+	 fmt.Println(String(mio))
+ }
+
+output:
+ name: Mio
+ age: 9
+*/
 func String(c interface{}) string {
 	return createString(c, true)
 }
 
-// Same as String, except ignores zero values e.g. empty strings and zeroes
+// Same as String(), except ignores zero values e.g. empty strings and zeroes
 func StringIgnoreZeroValues(c interface{}) string {
 	return createString(c, false)
 }

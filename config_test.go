@@ -411,14 +411,17 @@ func Test_ConfigFail(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			SetDefaultFile(tt.defaultFile)
+			err = SetDefaultFile(tt.defaultFile)
+			if err != nil {
+				err = ErrNoDefaultConfig
+			}
 
 			if tt.cfg == nil {
 				cfg = new(TestConfig)
 			} else {
 				cfg = tt.cfg
 			}
-			err = SetUpConfigurationWithConfigFile(cfg, tt.configFile)
+			err = addErr(err, SetUpConfigurationWithConfigFile(cfg, tt.configFile))
 			assert.NotNil(t, err)
 			for _, expectedErr := range tt.expectedErrors {
 				assert.Contains(t, err.Error(), expectedErr.Error())

@@ -17,10 +17,12 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var (
-	defaultFile = ""
-)
+var defaultFile = ""
 
+/*
+Set default file. fpath must be absolute path. If the file cannot be opened, the function will return an error. Note that the error will only be return if
+the error handling mode is set to ContinueOnError, else the function will Panic or Exit depending on the mode.
+*/
 func SetDefaultFile(fpath string) (err error) {
 	defaultFile = fpath
 
@@ -42,12 +44,17 @@ func GetDefaultFile() string {
 var (
 	ErrNoDefaultConfig            = errors.New("no default config file to parse")
 	ErrFailedToParseDefaultConfig = fmt.Errorf("failed to parse default config (%s)", defaultFile)
+	ErrNotAPointer                = errors.New("argument to must be a pointer")
 	ErrInvalidConfigFile          = errors.New("unsupported or invalid file")
 	ErrInvalidFormat              = errors.New("invalid format of file")
 	ErrNoConfigFileToParse        = errors.New("no file given to parse")
-	ErrNoFileFound                = syscall.Errno(2) //errors.New("could not find file")
+	ErrNoFileFound                = syscall.Errno(2) // "could not find file"
 )
 
+/*
+Compounds errors. Used rather than errors.Wrap since there's no hierarchy in the errors;
+ errors can stack up one another without one being dependant on one another.
+*/
 func addErr(prev error, add error) error {
 	if prev == nil {
 		return errors.New(add.Error())
@@ -55,10 +62,14 @@ func addErr(prev error, add error) error {
 	return errors.New(prev.Error() + ", " + add.Error())
 }
 
-// cfg must be a pointer
+/*
+Parse the default config fiĺe into the value pointed to by cfg. Returns error regardless of error handling mode.
+
+If cfg is not a pointer, ParseDefaultConfigFile returns an ErrNotAPointer.
+*/
 func ParseDefaultConfigFile(cfg interface{}) (err error) {
-	if reflect.TypeOf(cfg).Kind() != reflect.Ptr {
-		err = errors.New("struct given to ParseDefaultConfigFile must be of type pointer")
+	if reflect.TypeOf(cfg).Kind() != reflect.Ptr { //TODO: to a struct, map or list?
+		err = fmt.Errorf("[ParseDefaultConfigFile]: %w ", ErrNotAPointer)
 		return
 	}
 
@@ -82,10 +93,16 @@ func ParseDefaultConfigFile(cfg interface{}) (err error) {
 	return
 }
 
-// cfg must be a pointer
+/*
+Parse the given config fiĺe into the value pointed to by cfg. Returns error regardless of error handling scheme.
+
+If cfg is not a pointer, ParseConfigFile returns an ErrNotAPointer.
+
+The 'filename' must either be an absolute path to the config file, exist in the current working directory, or in one of the directories given as 'dirs'. If the given file cannot be found, ParseConfig file returns an ErrNoConfigFileToParse.
+*/
 func ParseConfigFile(cfg interface{}, filename string, dirs ...string) (err error) {
 	if reflect.TypeOf(cfg).Kind() != reflect.Ptr {
-		err = errors.New("struct given to ParseDefaultConfigFile must be of type pointer")
+		err = fmt.Errorf("[ParseConfigFile]: %w ", ErrNotAPointer)
 		return
 	}
 
@@ -95,7 +112,7 @@ func ParseConfigFile(cfg interface{}, filename string, dirs ...string) (err erro
 	}
 
 	// Parse default file first -- it's ok if it fails
-	err = ParseDefaultConfigFile(cfg)
+	ParseDefaultConfigFile(cfg)
 
 	// If not found as is, check through relevant directories
 	found := true
@@ -155,10 +172,9 @@ func decode(cfg interface{}, f *os.File, filename string) (err error) {
 	return
 }
 
-// cfg must be a pointer
 func writeToDefaultFile(cfg interface{}) (err error) {
 	if defaultFile == "" {
-		fmt.Println("WARNING! No default file path set")
+		fmt.Println("WARNING! Trying to write to default file but no default file path set")
 		osExit(1)
 	} else {
 		var write bool
