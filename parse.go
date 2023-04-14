@@ -112,7 +112,7 @@ func ParseConfigFile(cfg interface{}, filename string, dirs ...string) (err erro
 	}
 
 	// Parse default file first -- it's ok if it fails
-	err = ParseDefaultConfigFile(cfg)
+	ParseDefaultConfigFile(cfg)
 
 	// If not found as is, check through relevant directories
 	found := true
