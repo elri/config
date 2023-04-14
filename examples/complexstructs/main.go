@@ -39,7 +39,7 @@ func createConfig() *Configuration {
 	config.Init(config.PanicOnError)
 
 	//The default file path must be absolut path, since config is set to PanicOnError, the setup will panic if run outside exmaples/complexstructs/
-	config.SetDefaultFile("default_conf.yml")
+	config.SetDefaultFile("default_conf.toml")
 
 	cfg := new(Configuration)
 	config.SetUpConfiguration(cfg) //disregards error here since error handling mode is set to panic

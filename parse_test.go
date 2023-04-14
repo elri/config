@@ -325,7 +325,7 @@ func Test_encode(t *testing.T) {
 			_, err = encode(tt.cfg, tt.filename)
 			if tt.expectedError == nil {
 				err = ParseConfigFile(parsed, tt.filename)
-				assert.Equal(t, ErrNoDefaultConfig, err)
+				assert.Nil(t, err)
 			} else {
 				assert.NotNil(t, err)
 				assert.Contains(t, err.Error(), tt.expectedError.Error())
