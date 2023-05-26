@@ -53,7 +53,7 @@ var (
 
 /*
 Compounds errors. Used rather than errors.Wrap since there's no hierarchy in the errors;
- errors can stack up one another without one being dependant on one another.
+errors can stack up one another without one being dependant on one another.
 */
 func addErr(prev error, add error) error {
 	if prev == nil {
@@ -151,7 +151,7 @@ func decode(cfg interface{}, f *os.File, filename string) (err error) {
 	switch {
 	case strings.Contains(filename, "toml"):
 		_, err = toml.DecodeFile(filename, cfg)
-	case strings.Contains(filename, "yml"):
+	case strings.Contains(filename, "yml"), strings.Contains(filename, "yaml"):
 		decoder := yaml.NewDecoder(f)
 		err = decoder.Decode(cfg)
 	case strings.Contains(filename, "json"):
@@ -247,7 +247,7 @@ func encode(cfg interface{}, filename string) (buf *bytes.Buffer, err error) {
 		if err == nil {
 			bytes = buf.Bytes()
 		}
-	case strings.Contains(filename, "yml"):
+	case strings.Contains(filename, "yml"), strings.Contains(filename, "yaml"):
 		encoder := yaml.NewEncoder(buf)
 		err = encoder.Encode(cfg)
 		if err == nil {

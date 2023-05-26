@@ -14,7 +14,7 @@ var (
 	dobJson, _ = time.Parse("2006-01-02 15:04:05", "1981-01-01 01:41:00")
 )
 
-//TODO
+// TODO test this?
 type InnerTestConfig struct {
 	Pim  string   `toml:"pim" yaml:"pim" json:"pim"`
 	Age  int      `toml:"age" yaml:"age" json:"age"`
@@ -190,6 +190,11 @@ func Test_ParseConfigFile(t *testing.T) {
 		{
 			name:           "Given config file is yml (no default)",
 			configFile:     "test.yml",
+			expectedConfig: fullYml,
+		},
+		{
+			name:           "Given config file is yaml (no default)",
+			configFile:     "test.yaml",
 			expectedConfig: fullYml,
 		},
 		{
